@@ -1,0 +1,9 @@
+.env
+data/
+schwab_credentials.env
+schwab_refresh_token.txt
+venv/
+original_data/
+.DS_Store
+__pycache__/
+schwab_access_token.txt
