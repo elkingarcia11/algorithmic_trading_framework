@@ -1,4 +1,3 @@
-.env
 data/
 schwab_credentials.env
 schwab_refresh_token.txt
@@ -8,3 +7,4 @@ original_data/
 __pycache__/
 schwab_access_token.txt
 results.csv
+polygon_credentials.env
