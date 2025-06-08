@@ -1,11 +1,16 @@
+"""
+Options Fetcher Module
+Handles fetching options data from the API
+"""
+
 import os
-from rate_limiter import RateLimiter
+from polygon_rate_limiter import PolygonRateLimiter
 from datetime import datetime, timedelta
 from polygon import RESTClient
 from dotenv import load_dotenv
 import pandas as pd
 
-class OptionsAPI:
+class PolygonOptionsFetcher:
     def __init__(self):
         """
         Initialize the OptionsTracker class
@@ -20,14 +25,12 @@ class OptionsAPI:
         self.client = RESTClient(os.getenv("POLYGON_API_KEY"))
 
         # Initialize rate limiter
-        self.rate_limiter = RateLimiter(max_requests=5, interval=60)
+        self.rate_limiter = PolygonRateLimiter(max_requests=5, interval=60)
     
-    def fetch_ohlcv(self, option_symbol, timestamp):
+    def fetch_ohlcv(self, option_symbol, date):
         """
-        Fetch 1 minute ohlcv for the option symbol between start and end dates.
+        Fetch 1 minute ohlcv for the option symbol for the date specified.
         """
-        # Convert timestamp to date
-        date = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
 
         csv_filename = f"data/options/{option_symbol}_{date}.csv"
         
@@ -69,7 +72,8 @@ class OptionsAPI:
 
     def get_option_price(self, option_symbol, timestamp):
         """
-        Get the option price for a specific timestamp
+        Get the option price by fetching the day's options data from the csv file or from the API and searching for the timestamp within the days data.
+        Use Case: For backtesting, we need to get the option price for a specific timestamp.
         """
 
         # Convert timestamp to date
@@ -77,7 +81,7 @@ class OptionsAPI:
         # if file does not exist, fetch it
         if not os.path.exists(f"data/options/{option_symbol}_{date}.csv"):
             self.rate_limiter.wait_if_needed()
-            self.fetch_ohlcv(option_symbol, timestamp)
+            self.fetch_ohlcv(option_symbol, date)
         # Read csv file
         data = pd.read_csv(f"data/options/{option_symbol}_{date}.csv")
         # Find row with timestamp
@@ -85,26 +89,12 @@ class OptionsAPI:
         # Return price
         return row['close'].values[0]
 
-    def generate_option_symbol_for_date(self, symbol, strike_price, option_type, timestamp, days_til_expiry):
+    def generate_option_symbol_for_date(self, symbol, date, strike_price, option_type):
         """
-        Generate an option symbol for a specific base date (for backtesting)
+        Generate an option symbol based on the symbol, date, strike price, option type, and days until expiry
         """
-        # Convert timestamp to datetime object (keep as datetime for calculations)
-        base_date = datetime.fromtimestamp(timestamp)
-        
-        # Add days_til_expiry to base date
-        expiry_date = base_date + timedelta(days=days_til_expiry)
-
-        # Check if expiry is a weekend and adjust
-        if expiry_date.weekday() == 5:  # Saturday
-            # Make it Monday (add 2 days)
-            expiry_date += timedelta(days=2)
-        elif expiry_date.weekday() == 6:  # Sunday
-            # Make it Tuesday (add 2 days)
-            expiry_date += timedelta(days=2)
-
         # Format date as YYMMDD
-        date_str = expiry_date.strftime('%y%m%d')
+        date_str = date.strftime('%y%m%d')
         
         # Format strike price as 8-digit string with 3 decimal places
         strike_str = f"{int(strike_price * 1000):08d}"
@@ -118,3 +108,37 @@ class OptionsAPI:
         option_symbol = f"{symbol.upper()}{date_str}{option_type}{strike_str}"
         
         return option_symbol
+    
+    def return_next_expiry_date(self, date, days_til_expiry):
+        """
+        Return the next expiry date based on the date and days until expiry
+        Use Case: For generating option symbol based on a specific date
+        """
+        # Add days_til_expiry to base date
+        expiry_date = date + timedelta(days=days_til_expiry)
+        # If saturday or sunday, add 2 days
+        if expiry_date.weekday() == 5:
+            expiry_date += timedelta(days=2)
+        elif expiry_date.weekday() == 6:
+            expiry_date += timedelta(days=2)
+        return expiry_date
+        
+    def fetch_option_data(self):
+        """
+        Fetch option data for a specific timestamp
+        """
+        # Ask user for input for symbol, date, strike price, option type, days til expiry
+        symbol = input("Enter the option symbol: ")
+        date = input("Enter the expiration date: (Format: 2025-01-01)")
+        strike_price = input("Enter the strike price: ")
+        option_type = input("Enter the option type: (C or P)")
+        option_symbol = self.generate_option_symbol_for_date(symbol, date, strike_price, option_type)
+        # Ask user for what date they want to fetch option symbol for:
+        date = input("Enter the date to fetch option symbol for: (Format: 2025-01-01)")
+        self.fetch_ohlcv(option_symbol, date)
+        
+        
+        
+if __name__ == "__main__":
+    options_fetcher = PolygonOptionsFetcher()
+    options_fetcher.fetch_option_data()

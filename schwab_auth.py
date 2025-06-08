@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Schwab API Authentication Module
 Handles all authentication, token management, and API credential functionality

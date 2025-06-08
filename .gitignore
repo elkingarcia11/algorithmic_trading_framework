@@ -7,3 +7,4 @@ original_data/
 .DS_Store
 __pycache__/
 schwab_access_token.txt
+results.csv

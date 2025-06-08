@@ -1,6 +1,10 @@
+"""
+Data Aggregator Module
+Handles aggregating stock data from one timeframe to another
+"""
+
 import os
 import pandas as pd
-from datetime import datetime
 from typing import List, Optional
 
 class DataAggregator:
@@ -16,12 +20,12 @@ class DataAggregator:
             data_directory: Directory containing the stock data CSV files
         """
         self.data_directory = data_directory
-        self.supported_source_timeframes = ["1m", "5m", "10m", "15m", "30m"]
-        self.supported_target_timeframes = ["1h", "4h", "1d"]
-        
         # Ensure data directory exists
         if not os.path.exists(self.data_directory):
             print(f"❌ Data directory '{self.data_directory}' not found!")
+            
+        # Define supported timeframes
+        self.supported_timeframes = ["1m", "5m", "10m", "15m", "30m", "1h", "2h", "4h", "1d"]
           
     def aggregate_custom(self, source_timeframe: str, target_timeframes: List[str]) -> bool:
         """
@@ -35,16 +39,6 @@ class DataAggregator:
             bool: True if successful, False otherwise
         """
         print(f"🔄 Starting aggregation from {source_timeframe} to {target_timeframes}...")
-        
-        # Validate timeframes
-        if source_timeframe not in self.supported_source_timeframes:
-            print(f"❌ Unsupported source timeframe: {source_timeframe}")
-            return False
-        
-        for tf in target_timeframes:
-            if tf not in self.supported_target_timeframes:
-                print(f"❌ Unsupported target timeframe: {tf}")
-                return False
         
         # Get source files
         source_files = self._get_files_by_timeframe(source_timeframe)
@@ -197,14 +191,28 @@ class DataAggregator:
         """Get information about available data files"""
         files_info = {}
         
-        for timeframe in self.supported_source_timeframes + self.supported_target_timeframes:
-            files = self._get_files_by_timeframe(timeframe)
-            symbols = [f.split('_')[0] for f in files]
-            files_info[timeframe] = {
-                'count': len(files),
-                'files': files,
-                'symbols': symbols
-            }
+        # Get all CSV files in the directory
+        all_files = [f for f in os.listdir(self.data_directory) if f.endswith('.csv')]
+        
+        # Group files by timeframe
+        for file in all_files:
+            # Extract timeframe from filename (e.g., "AAPL_1m.csv" -> "1m")
+            parts = file.replace('.csv', '').split('_')
+            if len(parts) >= 2:
+                timeframe = parts[1]
+                if timeframe not in files_info:
+                    files_info[timeframe] = {
+                        'count': 0,
+                        'files': [],
+                        'symbols': set()
+                    }
+                files_info[timeframe]['count'] += 1
+                files_info[timeframe]['files'].append(file)
+                files_info[timeframe]['symbols'].add(parts[0])
+        
+        # Convert sets to sorted lists for consistent output
+        for timeframe in files_info:
+            files_info[timeframe]['symbols'] = sorted(list(files_info[timeframe]['symbols']))
         
         return files_info
     
@@ -226,26 +234,67 @@ class DataAggregator:
         
         print("=" * 60)
 
-
-def test_aggregation():
-    """Test function to run the aggregation"""
-    # Create aggregator instance
-    aggregator = DataAggregator("data")
-    
-    # Print current status
-    aggregator.print_status()
-    
-    # Run 5m to 1h/4h aggregation
-    print("\n" + "="*60)
-    success = aggregator.aggregate_custom("5m", ["1h", "4h"])
-    
-    if success:
-        print("\n🎉 Aggregation completed successfully!")
-        print("\n📊 Updated status:")
-        aggregator.print_status()
-    else:
-        print("\n❌ Aggregation failed!")
-
+    def run_aggregation(self) -> None:
+        """Main function to run data aggregation with user input"""
+        print("\n🎯 Data Aggregation Tool")
+        print("=" * 60)
+        
+        # Print current status
+        print("\n📊 Current Data Status:")
+        self.print_status()
+        
+        # Get source timeframe
+        print("\n📥 Source Timeframe Selection:")
+        print(f"   Supported timeframes: {', '.join(self.supported_timeframes)}")
+        source_tf = input("Enter source timeframe (e.g., 1m, 5m, 15m): ").strip().lower()
+        if not source_tf:
+            print("❌ Source timeframe is required")
+            return
+            
+        # Get target timeframes
+        print("\n🎯 Target Timeframes Selection:")
+        print(f"   Supported timeframes: {', '.join(self.supported_timeframes)}")
+        target_tfs_input = input("Enter target timeframes (comma-separated, e.g., 5m,15m,1h): ").strip().lower()
+        if not target_tfs_input:
+            print("❌ At least one target timeframe is required")
+            return
+            
+        target_tfs = [tf.strip() for tf in target_tfs_input.split(",") if tf.strip()]
+        
+        # Validate timeframes
+        if source_tf not in self.supported_timeframes:
+            print(f"❌ Invalid source timeframe: {source_tf}")
+            print(f"   Valid timeframes: {', '.join(self.supported_timeframes)}")
+            return
+            
+        invalid_targets = [tf for tf in target_tfs if tf not in self.supported_timeframes]
+        if invalid_targets:
+            print(f"❌ Invalid target timeframes: {', '.join(invalid_targets)}")
+            print(f"   Valid timeframes: {', '.join(self.supported_timeframes)}")
+            return
+            
+        # Confirm aggregation
+        print("\n🔍 Aggregation Configuration:")
+        print(f"   Source: {source_tf}")
+        print(f"   Targets: {', '.join(target_tfs)}")
+        print(f"   Data Directory: {self.data_directory}")
+        
+        confirm = input("\nProceed with aggregation? (y/n): ").strip().lower()
+        if confirm != 'y':
+            print("❌ Aggregation cancelled")
+            return
+            
+        # Run aggregation
+        print("\n🚀 Starting aggregation...")
+        success = self.aggregate_custom(source_tf, target_tfs)
+        
+        if success:
+            print("\n✅ Aggregation completed successfully!")
+            print("\n📊 Updated Data Status:")
+            self.print_status()
+        else:
+            print("\n❌ Aggregation failed")
 
 if __name__ == "__main__":
-    test_aggregation() 
+    aggregator = DataAggregator()
+    aggregator.run_aggregation()

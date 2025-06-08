@@ -1,6 +1,15 @@
+"""
+Rate Limiter Module
+Handles rate limiting for the PolygonAPI
+"""
+
 import time
 
-class RateLimiter:
+class PolygonRateLimiter:
+    """
+    Rate limiter to prevent Polygon API rate limiting
+    """
+    
     def __init__(self, max_requests=5, interval=60):
         self.max_requests = max_requests
         self.interval = interval

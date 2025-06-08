@@ -1,10 +1,15 @@
+"""
+Schwab Stock Data Fetcher Module
+Handles fetching stock data from Schwab API
+"""
+
 import os
+import time
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
 from typing import List
 from schwab_auth import SchwabAuth
-import time
 
 class StockDataFetcher:
     def __init__(self, data_directory: str = "data", symbols: List[str] = ["MSFT", "NVDA", "AAPL", "AMZN", "META", "TSLA", "QQQ", "SPY"], intervals: List[str] = ["1m", "5m", "10m", "15m", "30m"], start_date: str = "2025-01-01", end_date: str = "2025-06-06"):
@@ -264,18 +269,36 @@ class StockDataFetcher:
                             'volume': candle.get('volume', 0)
                         })
                     
-                    df = pd.DataFrame(df_data)
+                    new_df = pd.DataFrame(df_data)
                     
                     # Sort by timestamp and remove duplicates
-                    df = df.sort_values('timestamp').drop_duplicates(subset=['timestamp'])
+                    new_df = new_df.sort_values('timestamp').drop_duplicates(subset=['timestamp'])
                     
-                    # Save to CSV
+                    # Check if existing file exists
                     csv_filename = f"{self.data_directory}/{symbol}_{interval}.csv"
-                    df.to_csv(csv_filename, index=False)
-                    print(f"💾 Saved {len(df)} records to {csv_filename}")
+                    if os.path.exists(csv_filename):
+                        print(f"📂 Found existing data file for {symbol}_{interval}")
+                        # Read existing data
+                        existing_df = pd.read_csv(csv_filename)
+                        # Convert timestamp to numeric for proper comparison
+                        existing_df['timestamp'] = pd.to_numeric(existing_df['timestamp'])
+                        
+                        # Combine existing and new data
+                        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+                        # Sort by timestamp and remove duplicates
+                        combined_df = combined_df.sort_values('timestamp').drop_duplicates(subset=['timestamp'])
+                        
+                        print(f"📊 Combined data: {len(existing_df)} existing + {len(new_df)} new = {len(combined_df)} total records")
+                        # Save combined data
+                        combined_df.to_csv(csv_filename, index=False)
+                        print(f"💾 Updated {csv_filename} with combined data")
+                    else:
+                        # Save new data
+                        new_df.to_csv(csv_filename, index=False)
+                        print(f"💾 Created new file {csv_filename} with {len(new_df)} records")
                     
                 except Exception as e:
-                    print(f"❌ Error processing/saving data for {symbol}_{interval}: {e}")
+                    print(f"❌ Error processing data: {e}")
                     return False
             else:
                 print(f"⚠️  No data retrieved for {symbol}_{interval}")
@@ -283,72 +306,73 @@ class StockDataFetcher:
         return True
 
 
-def historical_data_fetcher():
-    """Main function for testing"""
-    # Ask user for symbol input otherwise default to these symbols to fetch
-    symbols_input = input("Enter symbols to fetch (default: MSFT, NVDA, AAPL, AMZN, META, TSLA, QQQ, SPY): ").strip()
-    if not symbols_input:
-        symbols = ["MSFT", "NVDA", "AAPL", "AMZN", "META", "TSLA", "QQQ", "SPY"]
-    else:
-        symbols = [s.strip().upper() for s in symbols_input.split(",") if s.strip()]
+    def historical_data_fetcher():
+        """Main function for testing"""
+        # Ask user for symbol input otherwise default to these symbols to fetch
+        symbols_input = input("Enter symbols to fetch (default: MSFT, NVDA, AAPL, AMZN, META, TSLA, QQQ, SPY): ").strip()
+        if not symbols_input:
+            symbols = ["MSFT", "NVDA", "AAPL", "AMZN", "META", "TSLA", "QQQ", "SPY"]
+        else:
+            symbols = [s.strip().upper() for s in symbols_input.split(",") if s.strip()]
 
-    # Ask user for interval input otherwise default to these intervals to fetch
-    intervals_input = input("Enter intervals to fetch (default: 1m, 5m, 10m, 15m, 30m): ").strip()
-    if not intervals_input:
-        intervals = ["1m", "5m", "10m", "15m", "30m"]
-    else:
-        intervals = [s.strip() for s in intervals_input.split(",") if s.strip()]
-    
-    # Ask for date range
-    start_date = input("Enter start date (YYYY-MM-DD, default: 2025-01-01): ").strip()
-    if not start_date:
-        start_date = "2025-01-01"
-    
-    end_date = input("Enter end date (YYYY-MM-DD, default: 2025-06-06): ").strip()
-    if not end_date:
-        end_date = "2025-06-06"
+        # Ask user for interval input otherwise default to these intervals to fetch
+        intervals_input = input("Enter intervals to fetch (default: 1m, 5m, 10m, 15m, 30m): ").strip()
+        if not intervals_input:
+            intervals = ["1m", "5m", "10m", "15m", "30m"]
+        else:
+            intervals = [s.strip() for s in intervals_input.split(",") if s.strip()]
+        
+        # Ask for date range
+        start_date = input("Enter start date (YYYY-MM-DD, default: 2025-01-01): ").strip()
+        if not start_date:
+            start_date = "2025-01-01"
+        
+        end_date = input("Enter end date (YYYY-MM-DD, default: 2025-06-06): ").strip()
+        if not end_date:
+            end_date = "2025-06-06"
 
-    # Create fetcher instance
-    fetcher = StockDataFetcher(
-        symbols=symbols, 
-        intervals=intervals, 
-        start_date=start_date, 
-        end_date=end_date
-    )
-    
-    # Validate dates
-    if not fetcher.validate_date_format(start_date):
-        print(f"❌ Invalid start date format: {start_date}")
-        return
-    
-    if not fetcher.validate_date_format(end_date):
-        print(f"❌ Invalid end date format: {end_date}")
-        return
-    
-    print(f"\n🎯 Configuration:")
-    print(f"   Symbols: {symbols}")
-    print(f"   Intervals: {intervals}")
-    print(f"   Date range: {start_date} to {end_date}")
-    print(f"   Data directory: {fetcher.data_directory}")
-    
-    # Check authentication status
-    print(f"\n🔐 Authentication Check:")
-    if not fetcher.check_authentication_status():
-        print("\n❌ Authentication failed - cannot proceed with data fetching")
-        print("Please ensure you have:")
-        print("   1. schwab_credentials.env file with SCHWAB_APP_KEY and SCHWAB_APP_SECRET")
-        print("   2. schwab_refresh_token.txt file with valid refresh token")
-        print("   3. Valid Schwab API access")
-        return
-    
-    # Fetch the data
-    print(f"\n🚀 Starting data fetching process...")
-    results = fetcher.fetch_list_of_symbols(symbols)
-    
-    print(f"\n🏁 Final Results:")
-    for symbol, success in results.items():
-        status = "✅ Success" if success else "❌ Failed"
-        print(f"   {symbol}: {status}")
+        # Create fetcher instance
+        fetcher = StockDataFetcher(
+            symbols=symbols, 
+            intervals=intervals, 
+            start_date=start_date, 
+            end_date=end_date
+        )
+        
+        # Validate dates
+        if not fetcher.validate_date_format(start_date):
+            print(f"❌ Invalid start date format: {start_date}")
+            return
+        
+        if not fetcher.validate_date_format(end_date):
+            print(f"❌ Invalid end date format: {end_date}")
+            return
+        
+        print(f"\n🎯 Configuration:")
+        print(f"   Symbols: {symbols}")
+        print(f"   Intervals: {intervals}")
+        print(f"   Date range: {start_date} to {end_date}")
+        print(f"   Data directory: {fetcher.data_directory}")
+        
+        # Check authentication status
+        print(f"\n🔐 Authentication Check:")
+        if not fetcher.check_authentication_status():
+            print("\n❌ Authentication failed - cannot proceed with data fetching")
+            print("Please ensure you have:")
+            print("   1. schwab_credentials.env file with SCHWAB_APP_KEY and SCHWAB_APP_SECRET")
+            print("   2. schwab_refresh_token.txt file with valid refresh token")
+            print("   3. Valid Schwab API access")
+            return
+        
+        # Fetch the data
+        print(f"\n🚀 Starting data fetching process...")
+        results = fetcher.fetch_list_of_symbols(symbols)
+        
+        print(f"\n🏁 Final Results:")
+        for symbol, success in results.items():
+            status = "✅ Success" if success else "❌ Failed"
+            print(f"   {symbol}: {status}")
 
-if __name__ == "__main__":
-    historical_data_fetcher()
+if __name__ == "__main__": 
+    stock_data_fetcher = StockDataFetcher()
+    stock_data_fetcher.historical_data_fetcher()
