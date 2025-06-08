@@ -1,6 +1,6 @@
-# Comprehensive Backtester
+# Algorithmic Trading Framework
 
-A comprehensive backtesting framework for algorithmic trading strategies, featuring data fetching from Schwab and Polygon.io, technical indicator generation, and strategy backtesting capabilities.
+A comprehensive framework for fetching data and testing algorithmic trading strategies, featuring data fetching from Schwab and Polygon.io, technical indicator generation, and strategy backtesting capabilities.
 
 ## Features
 
