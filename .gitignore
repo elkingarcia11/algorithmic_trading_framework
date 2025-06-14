@@ -6,3 +6,4 @@ original_data/
 __pycache__/
 schwab_access_token.txt
 results.csv
+data

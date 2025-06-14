@@ -35,8 +35,11 @@ class StockDataFetcher:
         os.makedirs(self.data_directory, exist_ok=True)
 
         for symbol in self.symbols:
-            self.get_price_history_from_schwab(symbol)
-            self.aggregate_data(symbol, start_interval=self.intervals_to_fetch[0])
+            success = self.get_price_history_from_schwab(symbol)
+            if success:
+                self.aggregate_data(symbol, start_interval=self.intervals_to_fetch[0])
+            else:
+                print(f"⚠️ Skipping aggregation for {symbol} due to failed data fetch")
 
         print("🎉 All data fetched and aggregated successfully")
 
@@ -105,7 +108,7 @@ class StockDataFetcher:
             return False
 
         # For each interval, fetch the data from the Schwab API
-        for interval in intervals_to_fetch:
+        for interval in self.intervals_to_fetch:
             print(f"📊 Processing interval: {interval} for {symbol}")
             all_candles = []
             current_start_dt = start_date_dt
