@@ -7,3 +7,4 @@ __pycache__/
 schwab_access_token.txt
 results.csv
 data
+data.zip
