@@ -1,6 +1,6 @@
 # Algorithmic Trading Framework
 
-A comprehensive framework for fetching data and testing algorithmic trading strategies, featuring data fetching from Schwab and Polygon.io, technical indicator generation, and strategy backtesting capabilities.
+A comprehensive framework for fetching data and testing algorithmic trading strategies, featuring data fetching from Schwab, technical indicator generation, and strategy backtesting capabilities.
 
 ## Features
 
@@ -11,11 +11,6 @@ A comprehensive framework for fetching data and testing algorithmic trading stra
     - Automatic data deduplication
     - Configurable date ranges
     - Default symbols: MSFT, NVDA, AAPL, AMZN, META, TSLA, QQQ, SPY
-  - Polygon.io integration (coming soon)
-    - Real-time and historical data
-    - Rate-limited API access
-    - Multiple data types (stocks, options, forex)
-    - Extended historical data coverage
 
 - **Data Aggregation**: Aggregate data across different timeframes
 
@@ -58,7 +53,6 @@ comprehensive_backtester/
 ├── generate_backtests.py     # Run backtests on strategies
 ├── schwab_stock_data_fetcher.py  # Fetch data from Schwab
 ├── schwab_auth.py           # Schwab API authentication
-├── polygon_options_fetcher.py  # Fetch options data from Polygon.io
 ├── rate_limiter.py         # API rate limiting implementation
 └── requirements.txt         # Project dependencies
 ```
@@ -76,11 +70,6 @@ comprehensive_backtester/
     - `schwab_refresh_token.txt` file with:
       ```
       your_refresh_token_here
-      ```
-  - Polygon.io API (coming soon):
-    - `polygon_credentials.env` file with:
-      ```
-      POLYGON_API_KEY=your_api_key_here
       ```
 
 ## Installation
@@ -109,10 +98,6 @@ pip install -r requirements.txt
        ```
        your_refresh_token_here
        ```
-   - Polygon.io API (coming soon):
-     - Create `polygon_credentials.env` in the project root:
-       ```
-       POLYGON_API_KEY=your_api_key_here
        ```
 
 ## Usage
@@ -132,26 +117,6 @@ fetcher = StockDataFetcher(
     data_directory="data",
     symbols=["AAPL", "NVDA", "MSFT"],
     intervals=["1m", "5m", "15m"],
-    start_date="2024-01-01",
-    end_date="2024-03-01"
-)
-
-# Fetch data
-fetcher.run_fetch()
-```
-
-#### Polygon.io Data (coming soon)
-
-```python
-from polygon_options_fetcher import PolygonOptionsFetcher
-
-# Initialize with default settings
-fetcher = PolygonOptionsFetcher()
-
-# Or customize settings
-fetcher = PolygonOptionsFetcher(
-    data_directory="data",
-    symbols=["AAPL", "NVDA"],
     start_date="2024-01-01",
     end_date="2024-03-01"
 )
@@ -249,5 +214,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Thanks to Schwab for providing the data API
-- Thanks to Polygon.io for providing the options data API
 - Inspired by various algorithmic trading frameworks and strategies
