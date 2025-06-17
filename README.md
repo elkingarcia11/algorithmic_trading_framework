@@ -1,6 +1,6 @@
-# Algorithmic Trading Framework
+# Multi-Indicator Backtesting Framework
 
-A comprehensive framework for backtesting trading strategies using technical indicators, featuring data fetching, indicator generation, backtesting, and results analysis.
+A comprehensive framework for backtesting trading strategies using multiple technical indicators, featuring data management, indicator generation, backtesting, and results analysis.
 
 ## Features
 
@@ -9,6 +9,7 @@ A comprehensive framework for backtesting trading strategies using technical ind
   - Organized data storage by symbol and timeframe
   - Automatic directory creation and management
   - Data validation and cleaning
+  - Schwab API integration for market data
 
 - **Technical Indicators**:
 
@@ -35,7 +36,7 @@ A comprehensive framework for backtesting trading strategies using technical ind
 ## Project Structure
 
 ```
-algorithmic_trading_framework/
+multi_indicator_backtester/
 ├── data/                      # Directory for storing price data and results
 │   ├── backtest_results_*     # Backtest results by symbol and timeframe
 │   └── indicators_*          # Generated indicators
@@ -44,6 +45,7 @@ algorithmic_trading_framework/
 ├── generate_backtests.py     # Backtesting implementation
 ├── analyze_results.py        # Results analysis and visualization
 ├── workflow.py              # Main workflow orchestration
+├── schwab_auth.py          # Schwab API authentication
 └── requirements.txt         # Project dependencies
 ```
 
@@ -51,14 +53,24 @@ algorithmic_trading_framework/
 
 - Python 3.8+
 - Required Python packages (see requirements.txt)
+- Schwab API Credentials:
+  - `schwab_credentials.env` file with:
+    ```
+    SCHWAB_APP_KEY=your_app_key_here
+    SCHWAB_APP_SECRET=your_app_secret_here
+    ```
+  - `schwab_refresh_token.txt` file with:
+    ```
+    your_refresh_token_here
+    ```
 
 ## Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/algorithmic_trading_framework.git
-cd algorithmic_trading_framework
+git clone https://github.com/yourusername/multi_indicator_backtester.git
+cd multi_indicator_backtester
 ```
 
 2. Install required packages:
@@ -66,6 +78,17 @@ cd algorithmic_trading_framework
 ```bash
 pip install -r requirements.txt
 ```
+
+3. Set up Schwab API credentials:
+   - Create `schwab_credentials.env` in the project root:
+     ```
+     SCHWAB_APP_KEY=your_app_key_here
+     SCHWAB_APP_SECRET=your_app_secret_here
+     ```
+   - Create `schwab_refresh_token.txt` in the project root:
+     ```
+     your_refresh_token_here
+     ```
 
 ## Usage
 
