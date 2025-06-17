@@ -1,84 +1,64 @@
 # Algorithmic Trading Framework
 
-A comprehensive framework for fetching data and testing algorithmic trading strategies, featuring data fetching from Schwab, technical indicator generation, and strategy backtesting capabilities.
+A comprehensive framework for backtesting trading strategies using technical indicators, featuring data fetching, indicator generation, backtesting, and results analysis.
 
 ## Features
 
-- **Data Fetching**:
+- **Data Management**:
 
-  - Schwab API integration
-    - Supports multiple timeframes (1m to 1d)
-    - Automatic data deduplication
-    - Configurable date ranges
-    - Default symbols: MSFT, NVDA, AAPL, AMZN, META, TSLA, QQQ, SPY
+  - Organized data storage by symbol and timeframe
+  - Automatic directory creation and management
+  - Data validation and cleaning
 
-- **Data Aggregation**: Aggregate data across different timeframes
-
-  - OHLCV (Open, High, Low, Close, Volume) aggregation
-  - Proper timestamp handling
-  - Data validation and error handling
-
-- **Technical Indicators**: Calculate various technical indicators:
+- **Technical Indicators**:
 
   - EMA (Exponential Moving Average)
   - VWMA (Volume Weighted Moving Average)
-  - MACD (Moving Average Convergence Divergence)
   - ROC (Rate of Change)
+  - Fast/Slow EMA combinations
+  - Signal EMA for trade confirmation
 
-- **Backtesting**: Test trading strategies with customizable parameters
+- **Backtesting**:
 
   - Multiple timeframe support
-  - Configurable position sizing
-  - Commission handling
-  - Stop loss implementation
-  - Support for both stock and options trading (coming soon)
+  - Configurable parameter ranges
+  - Comprehensive performance metrics
+  - Parallel processing support
 
-- **Performance Metrics**: Comprehensive performance analysis including:
-  - Win rate
-  - Profit factor
-  - Maximum drawdown
-  - Sharpe ratio
-  - Stop loss statistics
-  - Average drawdown from max
-  - Total return
+- **Analysis**:
+  - Parameter optimization analysis
+  - Performance visualization
+  - Heatmap generation
+  - Win rate analysis
+  - Profit analysis
 
 ## Project Structure
 
 ```
-comprehensive_backtester/
-├── data/                      # Directory for storing price data
-├── calculate_indicators.py    # Technical indicator calculations
-├── data_aggregator.py        # Data aggregation across timeframes
-├── generate_indicators.py    # Generate indicator files
-├── generate_backtests.py     # Run backtests on strategies
-├── schwab_stock_data_fetcher.py  # Fetch data from Schwab
-├── schwab_auth.py           # Schwab API authentication
-├── rate_limiter.py         # API rate limiting implementation
+algorithmic_trading_framework/
+├── data/                      # Directory for storing price data and results
+│   ├── backtest_results_*     # Backtest results by symbol and timeframe
+│   └── indicators_*          # Generated indicators
+├── market_data_fetcher.py    # Data fetching functionality
+├── generate_indicators.py    # Technical indicator generation
+├── generate_backtests.py     # Backtesting implementation
+├── analyze_results.py        # Results analysis and visualization
+├── workflow.py              # Main workflow orchestration
 └── requirements.txt         # Project dependencies
 ```
 
 ## Prerequisites
 
 - Python 3.8+
-- API Credentials:
-  - Schwab API:
-    - `schwab_credentials.env` file with:
-      ```
-      SCHWAB_APP_KEY=your_app_key_here
-      SCHWAB_APP_SECRET=your_app_secret_here
-      ```
-    - `schwab_refresh_token.txt` file with:
-      ```
-      your_refresh_token_here
-      ```
+- Required Python packages (see requirements.txt)
 
 ## Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/comprehensive_backtester.git
-cd comprehensive_backtester
+git clone https://github.com/yourusername/algorithmic_trading_framework.git
+cd algorithmic_trading_framework
 ```
 
 2. Install required packages:
@@ -87,75 +67,70 @@ cd comprehensive_backtester
 pip install -r requirements.txt
 ```
 
-3. Set up API credentials:
-   - Schwab API:
-     - Create `schwab_credentials.env` in the project root:
-       ```
-       SCHWAB_APP_KEY=your_app_key_here
-       SCHWAB_APP_SECRET=your_app_secret_here
-       ```
-     - Create `schwab_refresh_token.txt` in the project root:
-       ```
-       your_refresh_token_here
-       ```
-       ```
-
 ## Usage
 
-### 1. Fetch Historical Data
-
-#### Schwab Data
+### 1. Running the Complete Workflow
 
 ```python
-from schwab_stock_data_fetcher import StockDataFetcher
+from workflow import workflow
 
-# Initialize with default settings
-fetcher = StockDataFetcher()
+# Run with default settings
+workflow()
 
-# Or customize settings
-fetcher = StockDataFetcher(
-    data_directory="data",
-    symbols=["AAPL", "NVDA", "MSFT"],
-    intervals=["1m", "5m", "15m"],
-    start_date="2024-01-01",
-    end_date="2024-03-01"
+# Or customize parameters
+workflow(
+    symbols=["SPY", "QQQ"],
+    time_frames=["5m", "15m"],
+    ema_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    vwma_periods=[16, 17, 18],
+    roc_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    fast_emas=[12, 14, 16, 18, 20],
+    slow_emas=[26, 28, 30, 32, 34],
+    signal_emas=[9, 10, 11, 12, 13]
 )
-
-# Fetch data
-fetcher.run_fetch()
 ```
 
-### 2. Generate Technical Indicators
+### 2. Individual Components
+
+#### Generate Indicators
 
 ```python
 from generate_indicators import IndicatorGenerator
 
-# Initialize with default settings
-generator = IndicatorGenerator()
-
-# Or customize settings
 generator = IndicatorGenerator(
-    symbols=["AAPL", "NVDA"],
-    ema_periods=[3, 5, 10, 20],
-    vwma_periods=[5, 10, 20],
-    roc_periods=[3, 5, 10],
-    time_frames=["1m", "5m", "15m"]
+    ema_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    vwma_periods=[16, 17, 18],
+    roc_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    fast_emas=[12, 14, 16, 18, 20],
+    slow_emas=[26, 28, 30, 32, 34],
+    signal_emas=[9, 10, 11, 12, 13]
 )
-
-# Generate indicators
-generator.run_generation()
+generator.generate_indicators("SPY", "5m")
 ```
 
-### 3. Run Backtests
+#### Run Backtests
 
 ```python
 from generate_backtests import BacktestStrategy
 
-# Initialize backtester
-backtester = BacktestStrategy()
+backtester = BacktestStrategy(
+    ema_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    vwma_periods=[16, 17, 18],
+    roc_periods=[3, 5, 8, 10, 12, 14, 16, 18, 20],
+    fast_emas=[12, 14, 16, 18, 20],
+    slow_emas=[26, 28, 30, 32, 34],
+    signal_emas=[9, 10, 11, 12, 13]
+)
+backtester.backtest("SPY", "5m")
+```
 
-# Run backtests for specific symbols
-backtester.run_backtests(["AAPL", "NVDA"])
+#### Analyze Results
+
+```python
+from analyze_results import BacktestAnalyzer
+
+analyzer = BacktestAnalyzer("SPY", "5m")
+analyzer.analyze_backtest_results()
 ```
 
 ## Configuration
@@ -164,40 +139,48 @@ backtester.run_backtests(["AAPL", "NVDA"])
 
 - 1 minute (1m)
 - 5 minutes (5m)
-- 10 minutes (10m)
 - 15 minutes (15m)
 - 30 minutes (30m)
 - 1 hour (1h)
-- 2 hours (2h)
 - 4 hours (4h)
 - 1 day (1d)
 
 ### Default Parameters
 
-- Initial capital: $100,000
-- Position size: 10% of capital per trade
-- Commission: 0.1% per trade
-- Stop loss: 5% per trade
+#### Indicator Periods
 
-### Default Indicator Periods
+- EMA: [3, 5, 8, 10, 12, 14, 16, 18, 20]
+- VWMA: [16, 17, 18]
+- ROC: [3, 5, 8, 10, 12, 14, 16, 18, 20]
+- Fast EMA: [12, 14, 16, 18, 20]
+- Slow EMA: [26, 28, 30, 32, 34]
+- Signal EMA: [9, 10, 11, 12, 13]
 
-- EMA: [3, 5, 6, 7, 9, 10, 14, 21, 28, 35, 42, 49]
-- VWMA: [5, 10, 12, 17, 21, 28, 35, 42, 49]
-- ROC: [3, 5, 7, 8, 10, 14, 21, 28, 35, 42, 49]
+## Analysis Output
 
-## Performance Metrics
+The framework generates various analysis outputs:
 
-The backtester calculates the following metrics:
+1. **Heatmaps**:
 
-- Total trades
-- Win rate
-- Profit factor
-- Average win/loss
-- Maximum drawdown
-- Sharpe ratio
-- Total return
-- Stop loss statistics
-- Average drawdown from max price
+   - EMA vs VWMA period analysis
+   - Fast vs Slow EMA analysis
+   - Signal EMA analysis
+
+2. **Line Plots**:
+
+   - ROC period vs Win Rate
+   - ROC period vs Average Profit
+
+3. **Parameter Analysis**:
+
+   - Best performing parameter combinations
+   - Win rate analysis
+   - Profit analysis
+
+4. **Performance Metrics**:
+   - Win rate
+   - Average profit percentage
+   - Parameter frequency analysis
 
 ## Contributing
 
