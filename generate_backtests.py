@@ -9,6 +9,7 @@ import time
 from itertools import product
 import multiprocessing
 import numpy as np
+import csv
 
 def get_optimal_workers():
     """
@@ -28,53 +29,34 @@ class BacktestStrategy:
         self.signal_emas = signal_emas or [9, 10, 11, 12, 13]
 
     def process_combination(self, args):
-        """
-        Process a single combination
-        """
-        df, symbol, timeframe, ema_period, vwma_period, roc_period, fast_ema, slow_ema, signal_ema = args
         try:
-            # Pre-calculate indicator names
-            ema_col = f'ema_{ema_period}'
-            vwma_col = f'vwma_{vwma_period}'
-            roc_col = f'roc_{roc_period}'
-            macd_line_col = f'macd_line_{fast_ema}_{slow_ema}'
-            macd_signal_col = f'macd_signal_{fast_ema}_{slow_ema}_{signal_ema}'
+            df, symbol, timeframe, ema_period, vwma_period, roc_period, fast_ema, slow_ema, signal_ema = args
             
-            # Validate required columns
-            required_columns = ['close', 'open', 'high', 'low', 'volume']
-            if not all(col in df.columns for col in required_columns):
-                missing_columns = [col for col in required_columns if col not in df.columns]
-                print(f"❌ Missing required columns in {symbol}_{timeframe}: {missing_columns}")
-                return None
+            # Calculate indicators
+            ema_values = df['close'].ewm(span=ema_period, adjust=False).mean()
+            vwma_values = (df['close'] * df['volume']).rolling(window=vwma_period).sum() / df['volume'].rolling(window=vwma_period).sum()
+            roc_values = df['close'].pct_change(periods=roc_period) * 100
             
-            # Validate indicator columns
-            required_indicators = [ema_col, vwma_col, roc_col, macd_line_col, macd_signal_col]
-            if not all(ind in df.columns for ind in required_indicators):
-                missing_indicators = [ind for ind in required_indicators if ind not in df.columns]
-                print(f"❌ Missing indicators in {symbol}_{timeframe}: {missing_indicators}")
-                return None
+            # Calculate MACD
+            fast_ema_values = df['close'].ewm(span=fast_ema, adjust=False).mean()
+            slow_ema_values = df['close'].ewm(span=slow_ema, adjust=False).mean()
+            macd_values = fast_ema_values - slow_ema_values
+            macd_signal_values = macd_values.ewm(span=signal_ema, adjust=False).mean()
             
-            # Run backtest
-            max_open_candles = 0
-            max_loss_percentage = 0
-            max_win_percentage = 0
-            total_open_candles = 0
+            # Initialize variables
+            open_position = False
+            entry_price = 0
+            exit_price = 0
             total_profit_percentage = 0
             total_trade_count = 0
             total_win_count = 0
             total_loss_count = 0
-
-            open_position = False
+            max_win_percentage = float('-inf')
+            max_loss_percentage = float('inf')
+            max_open_candles = 0
+            total_open_candles = 0
             open_candles = 0
-            entry_price = 0
-            
-            # Pre-fetch columns for faster access
             close_prices = df['close'].values
-            ema_values = df[ema_col].values
-            vwma_values = df[vwma_col].values
-            roc_values = df[roc_col].values
-            macd_values = df[macd_line_col].values
-            macd_signal_values = df[macd_signal_col].values
             
             for i in range(len(df)):
                 if not open_position and self.buy_signal(
@@ -118,6 +100,7 @@ class BacktestStrategy:
                 'max_open_candles': max_open_candles,
                 'average_open_candles': average_open_candles,
                 'average_profit_percentage': average_profit_percentage,
+                'total_profit_percentage': total_profit_percentage,
                 'win_rate': win_rate,
                 'loss_rate': loss_rate,
                 'total_trade_count': total_trade_count,
@@ -126,18 +109,9 @@ class BacktestStrategy:
             }
 
             # Format the result as a CSV row (without datetime)
-            csv_row = f"{symbol}_{timeframe},{ema_period},{vwma_period},{roc_period},{fast_ema},{slow_ema},{signal_ema},{result['max_open_candles']},{result['average_open_candles']},{result['average_profit_percentage']},{result['win_rate']},{result['loss_rate']},{result['total_trade_count']},{result['max_win_percentage']},{result['max_loss_percentage']}\n"
+            csv_row = f"{symbol}_{timeframe},{ema_period},{vwma_period},{roc_period},{fast_ema},{slow_ema},{signal_ema},{result['max_open_candles']},{result['average_open_candles']},{result['average_profit_percentage']},{result['total_profit_percentage']},{result['win_rate']},{result['loss_rate']},{result['total_trade_count']},{result['max_win_percentage']},{result['max_loss_percentage']}\n"
             
-            # Write result immediately to file
-            results_file = os.path.abspath('backtest_results.csv')
-            try:
-                with open(results_file, 'a') as f:
-                    f.write(csv_row)
-                    f.flush()
-                    os.fsync(f.fileno())
-                print(f"✅ Written result for {symbol}_{timeframe} EMA:{ema_period} VWMA:{vwma_period} ROC:{roc_period} MACD:{fast_ema}_{slow_ema}_{signal_ema}")
-            except Exception as e:
-                print(f"❌ Error writing result to file: {e}")
+            print(f"✅ Written result for {symbol}_{timeframe} EMA:{ema_period} VWMA:{vwma_period} ROC:{roc_period} MACD:{fast_ema}_{slow_ema}_{signal_ema}")
             
             return csv_row
         except Exception as e:
@@ -155,7 +129,7 @@ class BacktestStrategy:
         if not os.path.exists(results_file):
             print(f"Creating new results file: {results_file}")
             with open(results_file, 'w') as f:
-                f.write("symbol,ema_period,vwma_period,roc_period,fast_ema,slow_ema,signal_ema,max_open_candles,average_open_candles,average_profit_percentage,win_rate,loss_rate,total_trade_count,max_win_percentage,max_loss_percentage\n")
+                f.write("symbol,ema_period,vwma_period,roc_period,fast_ema,slow_ema,signal_ema,max_open_candles,average_open_candles,average_profit_percentage,total_profit_percentage,win_rate,loss_rate,total_trade_count,max_win_percentage,max_loss_percentage\n")
                 f.flush()
                 os.fsync(f.fileno())
         else:

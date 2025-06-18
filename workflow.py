@@ -27,7 +27,7 @@ def validate_symbol(symbol: str) -> bool:
     return bool(symbol and symbol.isalpha() and 1 <= len(symbol) <= 5)
 
 def workflow(
-    symbols_filepath: str = "symbols_to_fetch.txt",
+    symbols_filepath:str= "symbols_to_fetch.txt",
     ema_periods: Optional[List[int]] = None,
     vwma_periods: Optional[List[int]] = None,
     roc_periods: Optional[List[int]] = None,
@@ -36,8 +36,8 @@ def workflow(
     signal_emas: Optional[List[int]] = None,
     time_frames: Optional[List[str]] = None,
     symbols: Optional[List[str]] = None,
-    start_date: str = "2025-06-16",
-    end_date: str = "2025-06-16"
+    start_date: str = "2025-06-09",
+    end_date: str = "2025-06-09"
 ) -> None:
     """
     Execute the complete trading strategy workflow.
@@ -74,12 +74,12 @@ def workflow(
         market_data_fetcher = MarketDataFetcher()
 
         # Optimized parameter ranges
-        ema_periods = ema_periods or [3, 5, 8, 10, 12, 14, 16, 18, 20]
-        vwma_periods = vwma_periods or [16, 17, 18]
-        roc_periods = roc_periods or [3, 5, 8, 10, 12, 14, 16, 18, 20]
-        fast_emas = fast_emas or [12, 14, 16, 18, 20]
-        slow_emas = slow_emas or [26, 28, 30, 32, 34]
-        signal_emas = signal_emas or [9, 10, 11, 12, 13]
+        ema_periods = ema_periods or [6,7]
+        vwma_periods = vwma_periods or [7]
+        roc_periods = roc_periods or [17,18,19]
+        fast_emas = fast_emas or [25,26,27,28,29]
+        slow_emas = slow_emas or [37,38,39,40,41,42,43]
+        signal_emas = signal_emas or [14,15,16,17]
         time_frames = time_frames or ["1m", "5m"]
 
         # Validate timeframes
@@ -120,7 +120,16 @@ def workflow(
                     
                     # Analyze results
                     logger.info(f"Analyzing results for {symbol}")
-                    BacktestAnalyzer(symbol, timeframe).analyze_backtest_results()
+                    BacktestAnalyzer(
+                        symbol, 
+                        timeframe,
+                        ema_periods=ema_periods,
+                        vwma_periods=vwma_periods,
+                        roc_periods=roc_periods,
+                        fast_emas=fast_emas,
+                        slow_emas=slow_emas,
+                        signal_emas=signal_emas
+                    ).analyze_backtest_results()
                     
                     completed_operations += 1
                     logger.info(f"Progress: {completed_operations}/{total_operations} operations completed")
@@ -138,7 +147,7 @@ def workflow(
 def main():
     """Main entry point for the workflow."""
     try:
-        workflow()
+        workflow(time_frames=["1m"], symbols=["SPY"], start_date="2025-05-22", end_date="2025-05-22")
     except Exception as e:
         logger.error(f"Workflow failed: {str(e)}")
         raise
