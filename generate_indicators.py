@@ -4,8 +4,6 @@ Handles generating indicator files for all symbols and timeframes for different 
 """
 import pandas as pd
 import os
-from typing import Dict, List
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 class IndicatorGenerator:
     def __init__(self, ema_periods: list[int] = None, vwma_periods: list[int] = None, roc_periods: list[int] = None, fast_emas: list[int] = None, slow_emas: list[int] = None, signal_emas: list[int] = None) -> None:

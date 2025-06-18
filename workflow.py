@@ -5,6 +5,10 @@ from market_data_fetcher import MarketDataFetcher
 from generate_indicators import IndicatorGenerator
 from generate_backtests import BacktestStrategy
 from analyze_results import BacktestAnalyzer
+import csv
+import pandas as pd
+from datetime import datetime, timedelta
+import shutil
 
 # Configure logging
 logging.basicConfig(
@@ -74,12 +78,12 @@ def workflow(
         market_data_fetcher = MarketDataFetcher()
 
         # Optimized parameter ranges
-        ema_periods = ema_periods or [6,7]
-        vwma_periods = vwma_periods or [7]
-        roc_periods = roc_periods or [17,18,19]
-        fast_emas = fast_emas or [25,26,27,28,29]
-        slow_emas = slow_emas or [37,38,39,40,41,42,43]
-        signal_emas = signal_emas or [14,15,16,17]
+        ema_periods = ema_periods or [5,6,7]
+        vwma_periods = vwma_periods or [6,7,8,15,16,17]
+        roc_periods = roc_periods or [5,6,7,8,15,16,17]
+        fast_emas = fast_emas or [14,15,16,25,26,27]
+        slow_emas = slow_emas or [38,39,40]
+        signal_emas = signal_emas or [10,11,12,15,16,17]
         time_frames = time_frames or ["1m", "5m"]
 
         # Validate timeframes
@@ -147,10 +151,70 @@ def workflow(
 def main():
     """Main entry point for the workflow."""
     try:
-        workflow(time_frames=["1m"], symbols=["SPY"], start_date="2025-05-22", end_date="2025-05-22")
+        workflow(time_frames=["1m"], symbols=["SPY"], start_date="2025-05-01", end_date="2025-06-17")
     except Exception as e:
         logger.error(f"Workflow failed: {str(e)}")
         raise
 
+def run_daily_workflow():
+    """
+    Run the workflow from 2025-05-01 to 2025-06-17, one day at a time,
+    and save the top 3 total_profit_percentage entries from each day to final_backtest_results.csv
+    """
+    start_date = datetime(2025, 5, 1)
+    end_date = datetime(2025, 6, 17)
+    current_date = start_date
+    
+    final_results_file = "final_backtest_results.csv"
+    if not os.path.exists(final_results_file):
+        with open(final_results_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'symbol', 'ema_period', 'vwma_period', 'roc_period', 'fast_ema', 'slow_ema', 'signal_ema',
+                'max_open_candles', 'average_open_candles', 'average_profit_percentage', 'total_profit_percentage',
+                'win_rate', 'loss_rate', 'total_trade_count', 'max_win_percentage', 'max_loss_percentage'
+            ])
+    
+    while current_date <= end_date:
+        # Ensure current_date doesn't exceed end_date
+        if current_date > end_date:
+            current_date = end_date
+            
+        date_str = current_date.strftime('%Y-%m-%d')
+        print(f"\n📅 Processing date: {date_str}")
+        
+        # Delete and recreate the data directory for a clean run
+        if os.path.exists('data'):
+            shutil.rmtree('data')
+        os.makedirs('data', exist_ok=True)
+        
+        try:
+            # Run the workflow for this date
+            workflow(time_frames=["1m"], symbols=["SPY"], start_date=date_str, end_date=date_str)
+            
+            # Process results for each symbol and timeframe
+            for symbol in ['SPY']:
+                for timeframe in ['1m']:
+                    results_file = f"data/backtest_results_{symbol}_{timeframe}.csv"
+                    if os.path.exists(results_file):
+                        df = pd.read_csv(results_file)
+                        if not df.empty:
+                            top_3 = df.nlargest(3, 'total_profit_percentage')
+                            top_3.to_csv(final_results_file, mode='a', header=False, index=False)
+                            print(f"✅ Saved top 3 results for {symbol}_{timeframe} on {date_str}")
+                            print(f"\nTop 3 results for {symbol}_{timeframe} on {date_str}:")
+                            for _, row in top_3.iterrows():
+                                print(f"Total Profit: {row['total_profit_percentage']:.2%} | "
+                                      f"EMA: {row['ema_period']} | "
+                                      f"VWMA: {row['vwma_period']} | "
+                                      f"ROC: {row['roc_period']} | "
+                                      f"MACD: {row['fast_ema']}_{row['slow_ema']}_{row['signal_ema']}")
+        except Exception as e:
+            print(f"❌ Error processing date {date_str}: {str(e)}")
+        current_date += timedelta(days=1)
+    print("\n✅ Daily workflow completed. Results saved to final_backtest_results.csv")
+
 if __name__ == "__main__":
-    main()
+    # Run the daily workflow
+    #run_daily_workflow()
+    workflow(time_frames=["1m"], symbols=["SPY"], start_date="2025-05-01", end_date="2025-06-17")

@@ -41,6 +41,9 @@ class MarketDataFetcher:
 
         Args:
             symbol: Stock symbol (e.g., 'SPY')
+            start_date: Start date in 'YYYY-MM-DD' format
+            end_date: End date in 'YYYY-MM-DD' format
+            interval_to_fetch: Interval in minutes (e.g., 1, 5, 15)
 
         Returns:
             bool: True if successful, False if failed
@@ -70,8 +73,7 @@ class MarketDataFetcher:
         token_info = self.schwab_auth.get_token_info()
         if token_info['valid']:
             remaining_minutes = token_info['seconds_remaining'] / 60
-            print(
-                f"🔐 Authentication valid - token expires in {remaining_minutes:.1f} minutes")
+            print(f"🔐 Authentication valid - token expires in {remaining_minutes:.1f} minutes")
         else:
             print("❌ Token validation failed")
             return False
@@ -90,7 +92,14 @@ class MarketDataFetcher:
         current_start_dt = start_date_dt
 
         while current_start_dt <= end_date_dt:
-            current_end_dt = current_start_dt + timedelta(days=10)
+            # Calculate period based on date range
+            days_to_end = (end_date_dt - current_start_dt).days + 1
+            if days_to_end < 10:
+                period = days_to_end
+                current_end_dt = end_date_dt
+            else:
+                period = 10
+                current_end_dt = min(current_start_dt + timedelta(days=9), end_date_dt)
 
             # Convert start and end dates to UNIX epoch milliseconds
             start_time_ms = int(current_start_dt.timestamp() * 1000)
@@ -99,7 +108,7 @@ class MarketDataFetcher:
             params = {
                 'symbol': symbol,
                 'periodType': 'day',
-                'period': 10,
+                'period': period,
                 'frequencyType': 'minute',
                 'frequency': self._extract_frequency_number(interval_to_fetch),  # Use numeric frequency
                 'startDate': start_time_ms,
@@ -108,12 +117,10 @@ class MarketDataFetcher:
                 'needPreviousClose': 'false'
             }
 
-            print(
-                f"📡 Fetching price history for {symbol} ({interval_to_fetch}) from {current_start_dt.date()} to {current_end_dt.date()}")
+            print(f"📡 Fetching price history for {symbol} ({interval_to_fetch}) from {current_start_dt.date()} to {current_end_dt.date()}")
 
             try:
-                response = requests.get(
-                    url, headers=headers, params=params, timeout=30)
+                response = requests.get(url, headers=headers, params=params, timeout=30)
                 # Sleep for 1 second to avoid rate limiting
                 time.sleep(1)
 
@@ -122,8 +129,7 @@ class MarketDataFetcher:
 
                     if 'candles' in data and data['candles']:
                         candles = data['candles']
-                        print(
-                            f"✅ Retrieved {len(candles)} candles from Schwab API")
+                        print(f"✅ Retrieved {len(candles)} candles from Schwab API")
                         all_candles.extend(candles)
                     else:
                         print("📊 No candle data found in API response")
@@ -141,8 +147,7 @@ class MarketDataFetcher:
                 return False
 
             # Move to next time window
-            current_start_dt = current_end_dt + \
-                timedelta(days=1)  # Add 1 day to avoid overlap
+            current_start_dt = current_end_dt + timedelta(days=1)  # Add 1 day to avoid overlap
 
             # Process and save the data if we have candles
             if all_candles:
@@ -163,37 +168,30 @@ class MarketDataFetcher:
                     new_df = pd.DataFrame(df_data)
 
                     # Sort by timestamp and remove duplicates
-                    new_df = new_df.sort_values(
-                        'timestamp').drop_duplicates(subset=['timestamp'])
+                    new_df = new_df.sort_values('timestamp').drop_duplicates(subset=['timestamp'])
 
                     # Check if existing file exists
                     csv_filename = f"data/{symbol}_{interval_to_fetch}.csv"
                     if os.path.exists(csv_filename):
-                        print(
-                            f"📂 Found existing data file for {symbol}_{interval_to_fetch}")
+                        print(f"📂 Found existing data file for {symbol}_{interval_to_fetch}")
                         # Read existing data
                         existing_df = pd.read_csv(csv_filename)
                         # Convert timestamp to numeric for proper comparison
-                        existing_df['timestamp'] = pd.to_numeric(
-                            existing_df['timestamp'])
+                        existing_df['timestamp'] = pd.to_numeric(existing_df['timestamp'])
 
                         # Combine existing and new data
-                        combined_df = pd.concat(
-                            [existing_df, new_df], ignore_index=True)
+                        combined_df = pd.concat([existing_df, new_df], ignore_index=True)
                         # Sort by timestamp and remove duplicates
-                        combined_df = combined_df.sort_values(
-                            'timestamp').drop_duplicates(subset=['timestamp'])
+                        combined_df = combined_df.sort_values('timestamp').drop_duplicates(subset=['timestamp'])
 
-                        print(
-                            f"📊 Combined data: {len(existing_df)} existing + {len(new_df)} new = {len(combined_df)} total records")
+                        print(f"📊 Combined data: {len(existing_df)} existing + {len(new_df)} new = {len(combined_df)} total records")
                         # Save combined data
                         combined_df.to_csv(csv_filename, index=False)
                         print(f"💾 Updated {csv_filename} with combined data")
                     else:
                         # Save new data
                         new_df.to_csv(csv_filename, index=False)
-                        print(
-                            f"💾 Created new file {csv_filename} with {len(new_df)} records")
+                        print(f"💾 Created new file {csv_filename} with {len(new_df)} records")
 
                 except Exception as e:
                     print(f"❌ Error processing data: {e}")

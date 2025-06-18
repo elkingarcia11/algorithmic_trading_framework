@@ -235,13 +235,26 @@ class BacktestStrategy:
         print(f"Successful: {successful:,}")
         print(f"Failed: {failed:,}")
         
+        # Print any errors that occurred
         if errors:
-            print("\nErrors encountered:")
+            print("\nErrors encountered during processing:")
             for error in errors[:10]:  # Show first 10 errors
-                print(f"- {error}")
+                print(f"❌ {error}")
             if len(errors) > 10:
                 print(f"... and {len(errors) - 10} more errors")
-        
+
+        # Sort results by total profit percentage
+        try:
+            # Read the CSV file
+            df = pd.read_csv(results_file)
+            # Sort by total_profit_percentage in descending order
+            df = df.sort_values('total_profit_percentage', ascending=False)
+            # Write back to CSV
+            df.to_csv(results_file, index=False)
+            print(f"✅ Sorted results by total profit percentage in {results_file}")
+        except Exception as e:
+            print(f"❌ Error sorting results: {str(e)}")
+
         return True
 
     def buy_signal(self, ema: float, vwma: float, roc: float, macd: float, macd_signal: float) -> bool:
