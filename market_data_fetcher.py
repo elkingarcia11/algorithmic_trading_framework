@@ -8,7 +8,7 @@ import time
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from schwab_auth import SchwabAuth
 
 
@@ -34,6 +34,14 @@ class MarketDataFetcher:
         except ValueError:
             print(f"⚠️  Invalid interval format: {interval}, defaulting to 1")
             return 1
+
+    def _get_valid_period(self, days_to_end: int) -> int:
+        """
+        Get the largest valid period that's not greater than days_to_end.
+        Valid periods for periodType=day are [1, 2, 3, 4, 5, 10].
+        """
+        valid_periods = [1, 2, 3, 4, 5, 10]
+        return max([p for p in valid_periods if p <= days_to_end])
 
     def get_price_history_from_schwab(self, symbol: str, start_date: str, end_date: str, interval_to_fetch: int) -> bool:
         """
@@ -94,12 +102,12 @@ class MarketDataFetcher:
         while current_start_dt <= end_date_dt:
             # Calculate period based on date range
             days_to_end = (end_date_dt - current_start_dt).days + 1
-            if days_to_end < 10:
-                period = days_to_end
-                current_end_dt = end_date_dt
-            else:
-                period = 10
-                current_end_dt = min(current_start_dt + timedelta(days=9), end_date_dt)
+            
+            # Get the largest valid period that fits within our date range
+            period = self._get_valid_period(days_to_end)
+            
+            # Calculate the actual end date based on the period
+            current_end_dt = min(current_start_dt + timedelta(days=period-1), end_date_dt)
 
             # Convert start and end dates to UNIX epoch milliseconds
             start_time_ms = int(current_start_dt.timestamp() * 1000)
@@ -245,5 +253,6 @@ class MarketDataFetcher:
                 print(f"💾 Created new file {symbol}_{interval}.csv with {len(df)} records")
 
 if __name__ == "__main__":
-    market_data_fetcher = MarketDataFetcher(symbols_filepath="symbols_to_fetch.txt", intervals_to_fetch=[
-        "1m", "5m"], intervals_to_aggregate_to=None)
+    for interval in ["30m"]:
+        market_data_fetcher = MarketDataFetcher()
+        market_data_fetcher.get_price_history_from_schwab("SPY", "2025-01-01", "2025-06-17", interval)

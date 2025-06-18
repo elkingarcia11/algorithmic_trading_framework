@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def validate_timeframe(timeframe: str) -> bool:
     """Validate if the timeframe is in the correct format."""
-    valid_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '1d']
+    valid_timeframes = ['1m', '5m', '10m', '15m', '30m', '1h', '4h', '1d']
     return timeframe in valid_timeframes
 
 def validate_symbol(symbol: str) -> bool:
@@ -41,7 +41,8 @@ def workflow(
     time_frames: Optional[List[str]] = None,
     symbols: Optional[List[str]] = None,
     start_date: str = "2025-06-09",
-    end_date: str = "2025-06-09"
+    end_date: str = "2025-06-09",
+    bypass_fetch: bool = False
 ) -> None:
     """
     Execute the complete trading strategy workflow.
@@ -58,6 +59,7 @@ def workflow(
         symbols: List of symbols to analyze (if None, reads from symbols_filepath)
         start_date: Start date for backtesting
         end_date: End date for backtesting
+        bypass_fetch: If True, skip the data fetching step
     """
     try:
         # Get symbols from file if not provided
@@ -78,12 +80,12 @@ def workflow(
         market_data_fetcher = MarketDataFetcher()
 
         # Optimized parameter ranges
-        ema_periods = ema_periods or [5,6,7]
-        vwma_periods = vwma_periods or [6,7,8,15,16,17]
-        roc_periods = roc_periods or [5,6,7,8,15,16,17]
-        fast_emas = fast_emas or [14,15,16,25,26,27]
-        slow_emas = slow_emas or [38,39,40]
-        signal_emas = signal_emas or [10,11,12,15,16,17]
+        ema_periods = ema_periods or [5,6,7,8,9,10]
+        vwma_periods = vwma_periods or [4,5,6,16,17,18]
+        roc_periods = roc_periods or [7,8,9,10,11]
+        fast_emas = fast_emas or [11,12,13,15,16,17]
+        slow_emas = slow_emas or [25,26,27,30,31,32]
+        signal_emas = signal_emas or [8,9,10,11]
         time_frames = time_frames or ["1m", "5m"]
 
         # Validate timeframes
@@ -108,11 +110,18 @@ def workflow(
                 try:
                     logger.info(f"Processing {symbol} on {timeframe} timeframe")
                     
-                    # Fetch market data
-                    logger.info(f"Fetching market data for {symbol}")
-                    market_data_fetcher.get_price_history_from_schwab(
-                        symbol, start_date, end_date, timeframe
-                    )
+                    # Fetch market data only if not bypassing
+                    if not bypass_fetch:
+                        logger.info(f"Fetching market data for {symbol}")
+                        market_data_fetcher.get_price_history_from_schwab(
+                            symbol, start_date, end_date, timeframe
+                        )
+                    else:
+                        logger.info(f"Skipping data fetch for {symbol} (bypass_fetch=True)")
+                        # Verify that the data file exists
+                        data_file = f"data/{symbol}_{timeframe}.csv"
+                        if not os.path.exists(data_file):
+                            raise FileNotFoundError(f"Data file not found: {data_file}")
                     
                     # Generate indicators
                     logger.info(f"Generating indicators for {symbol}")
@@ -217,4 +226,4 @@ def run_daily_workflow():
 if __name__ == "__main__":
     # Run the daily workflow
     #run_daily_workflow()
-    workflow(time_frames=["1m"], symbols=["SPY"], start_date="2025-05-01", end_date="2025-06-17")
+    workflow(time_frames=["15m"], symbols=["SPY"], start_date="2025-01-02", end_date="2025-06-17", bypass_fetch=True)
